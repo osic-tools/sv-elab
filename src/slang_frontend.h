@@ -690,6 +690,7 @@ struct NetlistContext : GraphBuilder, public DiagnosticIssuer {
 	SynthesisSettings &settings;
 	ast::Compilation &compilation;
 	const slang::SourceManager &source_mgr();
+	const ast::InstanceSymbol &realm_instance;
 
 	// The instance body to which the netlist under construction corresponds.
 	//
@@ -718,7 +719,7 @@ struct NetlistContext : GraphBuilder, public DiagnosticIssuer {
 	Yosys::dict<RTLIL::IdString, Memory> emitted_mems;
 #endif
 
-	// Used to implement modports on `realm`
+	// Used to implement modports on `realm`, populated in `prepare_interface_ports`
 	hashlib::dict<const ast::Scope*, std::string> scopes_remap;
 
 	// Cache per-symbol signal
@@ -773,6 +774,8 @@ struct NetlistContext : GraphBuilder, public DiagnosticIssuer {
 
 	ir::Const convert_svint(const slang::SVInt &svint, slang::SourceLocation loc);
 	const std::optional<ir::Const> convert_const(const slang::ConstantValue &constval, slang::SourceLocation loc);
+
+	void prepare_interface_ports();
 };
 
 // A single bit position in a match pattern: either a concrete net or a wildcard

@@ -2439,46 +2439,18 @@ public:
 					}
 
 					visit_interface_elements(conn, [&](const ast::ModportSymbol &modport, std::string &hierpath_suffix) {
-						if (inserted) {
-							submodule.scopes_remap[&static_cast<const ast::Scope&>(modport)] =
-								submodule.id(conn->port) + hierpath_suffix;
-						}
+						std::string modport_prefix = RTLIL::escape_id(std::string(conn->port.name) + hierpath_suffix);
 
 						modport.visit(ast::makeVisitor([&](auto&, const ast::ModportPortSymbol &port) {
-							ir::Value port_sig;
-							if (inserted) {
-								port_sig = submodule.add_wire(port);
-								RTLIL::Wire *w = port_sig.raw_.as_wire();
-								log_assert(w);
-								switch (port.direction) {
-								case ast::ArgumentDirection::In:
-									submodule.register_driven(Variable::from_symbol(&port));
-									w->port_input = true;
-									break;
-								case ast::ArgumentDirection::Out:
-									w->port_output = true;
-									break;
-								case ast::ArgumentDirection::InOut:
-									submodule.register_driven(Variable::from_symbol(&port));
-									w->port_input = true;
-									w->port_output = true;
-									break;
-								case ast::ArgumentDirection::Ref:
-									netlist.add_diag(diag::RefUnsupported, port.location);
-									break;
-								default:
-									log_abort();
-								}
-							} else {
-								port_sig = submodule.wire(port);
-							}
-
 							ast_invariant(port, port.internalSymbol);
 							const ast::Scope *parent = port.getParentScope();
 							ast_invariant(port, parent->asSymbol().kind == ast::SymbolKind::Modport);
 							const ast::ModportSymbol &modport = parent->asSymbol().as<ast::ModportSymbol>();
 
-							RTLIL::IdString port_name = port_sig.raw_.as_wire()->name;
+							RTLIL::IdString port_name = modport_prefix \
+							 	+ hierpath_relative_to(&static_cast<const ast::Scope&>(modport), port.getParentScope()) \
+							 	+ std::string(".") + std::string(port.name);
+
 							if (netlist.scopes_remap.count(&modport)) {
 								cell->setPort(port_name, netlist.wire(port));
 								if (port.direction == ast::ArgumentDirection::Out || port.direction == ast::ArgumentDirection::InOut)
@@ -2629,10 +2601,8 @@ public:
 		netlist.detected_memories = mem_detect.memory_candidates;
 	}
 
-	bool add_internal_wires(const ast::InstanceBodySymbol &body)
+	void add_internal_wires(const ast::InstanceBodySymbol &body)
 	{
-		bool success = true;
-
 		std::unordered_set<const slang::ast::SubroutineSymbol *> visited_subroutines;
 		body.visit(ast::makeVisitor([&](auto&, const ast::ValueSymbol &sym) {
 			if (!sym.getType().isFixedSize())
@@ -2712,37 +2682,6 @@ public:
 				return;
 			visitor.visitDefault(sym);
 		}));
-
-		// For top-level modules with AllowTopLevelIfacePorts, slang creates synthetic
-		// interface instances that live outside the realm body. Set up scopes_remap and
-		// add wires for modport port symbols so expressions and initializers can resolve them.
-		auto *parent_scope = body.parentInstance->getParentScope();
-		bool is_top_level = parent_scope &&
-			parent_scope->asSymbol().kind == ast::SymbolKind::Root;
-		if (is_top_level) {
-			for (auto *conn : body.parentInstance->getPortConnections()) {
-				if (conn->port.kind != ast::SymbolKind::InterfacePort)
-					continue;
-
-				if (!conn->getIfaceConn().second) {
-					netlist.add_diag(diag::ModportRequired, conn->port.location);
-					success = false;
-					continue;
-				}
-
-				visit_interface_elements(conn, [&](const ast::ModportSymbol &modport, std::string &hierpath_suffix) {
-					netlist.scopes_remap[&static_cast<const ast::Scope&>(modport)] =
-								netlist.id(conn->port) + hierpath_suffix;
-					modport.visit(ast::makeVisitor([&](auto &, const ast::ModportPortSymbol &port) {
-						if (!port.getType().isFixedSize())
-							return;
-						netlist.add_wire(port);
-					}));
-				});
-			}
-		}
-
-		return success;
 	}
 
 	void handle(const ast::InstanceBodySymbol &body)
@@ -2756,9 +2695,7 @@ public:
 			detect_memories(body);
 #endif
 			// add all internal wires before we enter the body
-			if (!add_internal_wires(body)) {
-				return;
-			}
+			add_internal_wires(body);
 			// Evaluate inline initializers on variables
 			evaluate_decl_initializers(netlist);
 			// Visit the body for the bulk of processing
@@ -3575,12 +3512,14 @@ NetlistContext::NetlistContext(
 		SynthesisSettings &settings,
 		ast::Compilation &compilation,
 		const ast::InstanceSymbol &instance)
-	: settings(settings), compilation(compilation), realm(instance.body), eval(*this)
+	: settings(settings), compilation(compilation),
+	  realm_instance(instance), realm(instance.body), eval(*this)
 {
 	GraphBuilder::backend = std::move(backend);
 #ifndef SLANG_NO_YOSYS
 	transfer_attrs(*this, instance.body.getDefinition(), GraphBuilder::backend->canvas);
 #endif
+	prepare_interface_ports();
 }
 
 NetlistContext::NetlistContext(
@@ -3588,6 +3527,71 @@ NetlistContext::NetlistContext(
 		const ast::InstanceSymbol &instance)
 	: NetlistContext(other.backend->start_new_graph(module_type_id(instance.body)), other.settings, other.compilation, instance)
 {
+}
+
+void NetlistContext::prepare_interface_ports()
+{
+	// Set up scopes_remap and add wires for externally connected modport port symbols
+	// so expressions and initializers can resolve them. This is done for any interface
+	// conections on a kept module boundary, both at the top level and deeper in the design
+	// hierarchy.
+	//
+	// For top-level modules with AllowTopLevelIfacePorts, slang creates synthetic
+	// interface instances that live outside the realm body.
+
+	auto *parent_scope = realm_instance.getParentScope();
+	log_assert(parent_scope != nullptr);
+	bool is_top_level = parent_scope->asSymbol().kind == ast::SymbolKind::Root;
+
+	for (auto *conn : realm_instance.getPortConnections()) {
+		if (conn->port.kind != ast::SymbolKind::InterfacePort)
+			continue;
+
+		slang::SourceLocation loc;
+		if (auto expr = conn->getExpression()) {
+			loc = expr->sourceRange.start();
+		} else if (is_top_level) {
+			loc = conn->port.location;
+		} else {
+			loc = realm_instance.location;
+		}
+
+		if (!conn->getIfaceConn().second) {
+			add_diag(diag::ModportRequired, conn->port.location);
+			disabled = true;
+			continue;
+		}
+
+		visit_interface_elements(conn, [&](const ast::ModportSymbol &modport, std::string &hierpath_suffix) {
+			scopes_remap[&static_cast<const ast::Scope&>(modport)] = std::string(conn->port.name) + hierpath_suffix;
+			modport.visit(ast::makeVisitor([&](auto &, const ast::ModportPortSymbol &port) {
+				if (!port.getType().isFixedSize())
+					return;
+				ir::Value port_sig = add_wire(port);
+				RTLIL::Wire *w = port_sig.raw_.as_wire();
+				log_assert(w);
+				switch (port.direction) {
+				case ast::ArgumentDirection::In:
+					register_driven(Variable::from_symbol(&port));
+					w->port_input = true;
+					break;
+				case ast::ArgumentDirection::Out:
+					w->port_output = true;
+					break;
+				case ast::ArgumentDirection::InOut:
+					register_driven(Variable::from_symbol(&port));
+					w->port_input = true;
+					w->port_output = true;
+					break;
+				case ast::ArgumentDirection::Ref:
+					add_diag(diag::RefUnsupported, port.location);
+					break;
+				default:
+					log_abort();
+				}
+			}));
+		});
+	}
 }
 
 NetlistContext::~NetlistContext()
@@ -3673,8 +3677,12 @@ void fixup_options(SynthesisSettings &settings, slang::driver::Driver &driver)
 
 void populate_netlist(HierarchyQueue &hqueue, NetlistContext &netlist)
 {
-	PopulateNetlist populate(hqueue, netlist);
-	netlist.realm.visit(populate);
+	// Check population of the netlist isn't disabled as side effect
+	// of a previously issued diagnostic
+	if (!netlist.disabled) {
+		PopulateNetlist populate(hqueue, netlist);
+		netlist.realm.visit(populate);
+	}
 }
 
 void add_internal_symbols(NetlistContext &netlist, const ast::InstanceBodySymbol &body)

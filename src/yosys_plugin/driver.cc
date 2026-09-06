@@ -481,9 +481,6 @@ struct SlangFrontend : Frontend
 				NetlistContext &netlist = *hqueue.queue[i];
 				emitted_module_names.push_back(netlist.backend->canvas->name);
 
-				if (netlist.disabled)
-					continue;
-
 				populate_netlist(hqueue, netlist);
 
 				slang::Diagnostics diags;
