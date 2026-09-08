@@ -3557,7 +3557,7 @@ void NetlistContext::prepare_interface_ports()
 		}
 
 		if (!conn->getIfaceConn().second) {
-			add_diag(diag::ModportRequired, conn->port.location);
+			add_diag(diag::ModportRequired, loc);
 			disabled = true;
 			continue;
 		}
