@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         yosys_version:
-          - v0.54
+          - v0.66
     steps:
       - name: Install Dependencies
         shell: bash
