@@ -2576,6 +2576,7 @@ public:
 			return;
 		}
 
+#ifndef SLANG_NO_YOSYS
 		if (ast::ConditionalExpression::isKind(expr.right().kind)) {
 			auto &ternary = expr.right().as<ast::ConditionalExpression>();
 			auto lhs_value = ternary.left().eval(netlist.eval.const_);
@@ -2599,6 +2600,7 @@ public:
 				return;
 			}
 		}
+#endif
 
 		ir::Value rvalue = netlist.eval(expr.right());
 		netlist.add_continuous_driver(netlist.eval.lhs(expr.left()), rvalue);
@@ -2673,7 +2675,7 @@ public:
 				ir::Memory *memory = netlist.backend->add_memory(netlist.id(sym), width, range);
 				netlist.emitted_mems[&sym] = memory;
 				log_debug("Memory inferred for variable %s ([%" PRId32 ":%" PRId32 "], width: %" PRIu64 ")\n",
-						  log_id(netlist.id(sym)), range.left, range.right, width);
+						  netlist.id(sym).c_str(), range.left, range.right, width);
 			} else {
 				netlist.add_wire(sym);
 			}
@@ -3605,6 +3607,7 @@ void NetlistContext::prepare_interface_ports()
 			modport.visit(ast::makeVisitor([&](auto &, const ast::ModportPortSymbol &port) {
 				if (!port.getType().isFixedSize())
 					return;
+#ifndef SLANG_NO_YOSYS
 				ir::Value port_sig = add_wire(port);
 				RTLIL::Wire *w = port_sig.raw_.as_wire();
 				log_assert(w);
@@ -3627,6 +3630,19 @@ void NetlistContext::prepare_interface_ports()
 				default:
 					log_abort();
 				}
+#else
+				switch (port.direction) {
+				case ast::ArgumentDirection::In:
+				case ast::ArgumentDirection::InOut:
+					register_driven(Variable::from_symbol(&port));
+					break;
+				case ast::ArgumentDirection::Ref:
+					add_diag(diag::RefUnsupported, port.location);
+					break;
+				default:
+					break;
+				}
+#endif
 			}));
 		});
 	}
