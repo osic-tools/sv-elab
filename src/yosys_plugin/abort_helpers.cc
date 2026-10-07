@@ -24,6 +24,8 @@
 
 namespace slang_frontend {
 
+using namespace Yosys;
+
 extern ast::Compilation *global_compilation;
 
 static slang::SourceRange source_location(const ast::Symbol &obj)
@@ -72,6 +74,11 @@ template <typename T>
 	log_error("Feature unimplemented at %s:%d, see AST and code line dump above%s%s%s\n", file,
 			line, condition ? " (failed condition \"" : "", condition ? condition : "",
 			condition ? "\")" : "");
+}
+
+[[noreturn]] void error_(const char *file, int line, const char *condition)
+{
+	log_error("Assert `%s' failed in %s:%d.\n", condition, file, line);
 }
 
 [[noreturn]] void unimplemented_(

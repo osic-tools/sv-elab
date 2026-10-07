@@ -14,6 +14,7 @@
 #include <utility>
 #include <optional>
 #include <set>
+#include <stdexcept>
 #include "ir.h"
 #include "slang/ast/EvalContext.h"
 #include "slang/ast/Scope.h"
@@ -27,98 +28,6 @@
 #ifndef SLANG_NO_YOSYS
 #include "kernel/rtlil.h"
 #include "kernel/log.h"
-#endif
-
-#ifdef SLANG_NO_YOSYS
-// Standalone stubs for Yosys log/assert functions, used when building the
-// frontend without Yosys (SLANG_NO_YOSYS). Mirrors the shared frontend's
-// requirements without pulling in any Yosys headers.
-#include <cstdarg>
-#include <cstdio>
-#include <cstdlib>
-
-namespace Yosys {
-
-[[gnu::format(printf, 1, 2)]]
-inline void log(const char* fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-}
-
-inline void log_flush()
-{
-  fflush(stderr);
-}
-
-[[gnu::format(printf, 1, 2)]] [[noreturn]]
-inline void log_error(const char* fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  std::abort();
-}
-
-[[gnu::format(printf, 1, 2)]]
-inline void log_warning(const char* fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  fprintf(stderr, "Warning: ");
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-}
-
-#ifndef log_debug
-[[gnu::format(printf, 1, 2)]]
-inline void log_debug(const char*, ...)
-{
-}
-#endif
-
-inline int ys_debug(int = 0)
-{
-  return 0;
-}
-
-#define log_abort() std::fprintf(stderr, "log_abort at %s:%d\n", __FILE__, __LINE__); std::abort()
-
-// log_assert: use a macro so we get file/line info
-#ifndef log_assert
-#define log_assert(_cond_)                           \
-  do {                                               \
-    if (!(_cond_)) {                                 \
-      std::fprintf(stderr,                           \
-                   "Assertion failed: %s [%s:%d]\n", \
-                   #_cond_,                          \
-                   __FILE__,                         \
-                   __LINE__);                        \
-      std::abort();                                  \
-    }                                                \
-  } while (0)
-#endif
-
-[[gnu::format(printf, 1, 2)]]
-inline std::string stringf(const char* fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  va_list ap2;
-  va_copy(ap2, ap);
-  int n = vsnprintf(nullptr, 0, fmt, ap);
-  va_end(ap);
-  std::string result(n, '\0');
-  vsnprintf(result.data(), n + 1, fmt, ap2);
-  va_end(ap2);
-  return result;
-}
-
-}  // namespace Yosys
-
 #endif
 
 namespace slang_frontend {
@@ -168,26 +77,37 @@ class WritePort {};
 
 namespace slang_frontend {
 
+#ifndef SLANG_NO_YOSYS
+
 using Yosys::log;
-using Yosys::log_flush;
 using Yosys::log_error;
-using Yosys::log_warning;
 using Yosys::ys_debug;
 #ifndef log_debug
 using Yosys::log_debug;
 #endif
-#ifndef SLANG_NO_YOSYS
-using Yosys::log_id;
-using Yosys::log_signal;
 namespace RTLIL = ::Yosys::RTLIL;
 namespace ID = ::Yosys::RTLIL::ID;
 using RTLIL::escape_id;
-#else
-// log_abort is a macro in this build
-#endif
-#define assert_invariant(property) log_assert(property)
-namespace ast = ::slang::ast;
 
+#else // SLANG_NO_YOSYS
+
+// Used for failed internal invariants
+class InternalError : public std::logic_error {
+public:
+	InternalError(std::string message, slang::SourceRange range={})
+		: std::logic_error(message), range(range) {}
+
+	slang::SourceRange range;
+};
+
+[[gnu::format(printf, 1, 2)]]
+inline void log_debug(const char*, ...)
+{
+}
+
+#endif
+
+namespace ast = ::slang::ast;
 struct NetlistContext;
 class ProceduralContext;
 class RegisterEscapeConstructGuard;
@@ -870,7 +790,8 @@ extern bool is_decl_empty_module(const slang::syntax::SyntaxNode &syntax);
 extern void export_blackbox_to_rtlil(NetlistContext &netlist, const ast::InstanceSymbol &inst, RTLIL::Design *target);
 #endif
 
-// abort_helpers.cc
+// abort_helpers.cc/slang_frontend.cc
+[[noreturn]] void error_(const char *file, int line, const char *condition);
 [[noreturn]] void unimplemented_(const ast::Symbol &obj, const char *file, int line, const char *condition);
 [[noreturn]] void unimplemented_(const ast::Expression &obj, const char *file, int line, const char *condition);
 [[noreturn]] void unimplemented_(const ast::Statement &obj, const char *file, int line, const char *condition);
@@ -879,6 +800,7 @@ extern void export_blackbox_to_rtlil(NetlistContext &netlist, const ast::Instanc
 #define unimplemented(obj) { slang_frontend::unimplemented_(obj, __FILE__, __LINE__, NULL); }
 #define ast_invariant(obj, property) require(obj, property)
 #define ast_unreachable(obj) unimplemented(obj)
+#define assert_invariant(property) { if (!(property)) error_(__FILE__, __LINE__, #property); }
 
 [[noreturn]] void wire_missing_(NetlistContext &netlist, const ast::Symbol &symbol, const char *file, int line);
 #define wire_missing(netlist, symbol) { wire_missing_(netlist, symbol, __FILE__, __LINE__); }

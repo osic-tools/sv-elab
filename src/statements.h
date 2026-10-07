@@ -567,8 +567,8 @@ public:
 
 	void handle(const ast::BlockStatement &blk)
 	{
-		require(blk, blk.blockKind == ast::StatementBlockKind::Sequential)
-				EnterAutomaticScopeGuard guard(context.eval, blk.blockSymbol);
+		require(blk, blk.blockKind == ast::StatementBlockKind::Sequential);
+		EnterAutomaticScopeGuard guard(context.eval, blk.blockSymbol);
 
 		if (blk.blockSymbol) {
 			ast_invariant(*blk.blockSymbol, blk.blockSymbol->tryGetStatement() == &blk);

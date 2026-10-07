@@ -23,6 +23,7 @@
 #include <utility>
 #include <filesystem>
 #include <optional>
+#include <stdexcept>
 #include <vector>
 
 #include "slang/ast/ASTVisitor.h"
@@ -305,6 +306,8 @@ namespace slang_frontend {
 #ifndef SLANG_MUX_LOWERING
 [[maybe_unused]] static hashlib::pool<VariableBit> detect_possibly_unassigned_subset(hashlib::pool<VariableBit> &signals, Case *rule, int level=0)
 {
+	using Yosys::log_signal;
+
 	hashlib::pool<VariableBit> remaining = signals;
 	bool debug = false;
 
@@ -3781,4 +3784,77 @@ void add_internal_symbols(NetlistContext &netlist, const ast::InstanceBodySymbol
 	populate.add_internal_wires(body);
 }
 
-};
+#ifdef SLANG_NO_YOSYS
+
+// clang-format on
+
+static slang::SourceRange source_location(const ast::Symbol &obj)
+{
+	return slang::SourceRange(obj.location, obj.location);
+}
+static slang::SourceRange source_location(const ast::Expression &expr)
+{
+	return expr.sourceRange;
+}
+static slang::SourceRange source_location(const ast::Statement &stmt)
+{
+	return stmt.sourceRange;
+}
+static slang::SourceRange source_location(const ast::TimingControl &stmt)
+{
+	return stmt.sourceRange;
+}
+
+[[noreturn]] void error_(const char *file, int line, const char *condition)
+{
+	throw InternalError(
+			"internal error at "s + file + ":" + std::to_string(line) + ": " + condition, {});
+}
+
+template <typename T>
+[[noreturn]] void unimplemented__(const T &obj, const char *file, int line, const char *condition)
+{
+	throw InternalError("internal error at "s + file + ":" + std::to_string(line) + ": " +
+								(condition ? condition : "reached code expected unreachable"),
+			source_location(obj));
+}
+
+[[noreturn]] void unimplemented_(
+		const ast::Symbol &obj, const char *file, int line, const char *condition)
+{
+	unimplemented__(obj, file, line, condition);
+}
+
+[[noreturn]] void unimplemented_(
+		const ast::Expression &obj, const char *file, int line, const char *condition)
+{
+	unimplemented__(obj, file, line, condition);
+}
+
+[[noreturn]] void unimplemented_(
+		const ast::Statement &obj, const char *file, int line, const char *condition)
+{
+	unimplemented__(obj, file, line, condition);
+}
+
+[[noreturn]] void unimplemented_(
+		const ast::TimingControl &obj, const char *file, int line, const char *condition)
+{
+	unimplemented__(obj, file, line, condition);
+}
+
+[[noreturn]] void wire_missing_(
+		NetlistContext &netlist, const ast::Symbol &symbol, const char *file, int line)
+{
+	std::string hier = netlist.realm.getHierarchicalPath();
+	std::string symbol_hier = symbol.getHierarchicalPath();
+	throw InternalError("internal error at "s + file + ":" + std::to_string(line) +
+								": while generating the netlist content of HDL instance '" + hier +
+								"' of module '" + std::string(netlist.realm.getDefinition().name) +
+								"' signal for symbol '" + symbol_hier + "' is missing",
+			source_location(symbol));
+}
+
+#endif
+
+}; // namespace slang_frontend
