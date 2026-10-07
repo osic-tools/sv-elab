@@ -102,8 +102,8 @@ template <typename T>
 		NetlistContext &netlist, const ast::Symbol &symbol, const char *file, int line)
 {
 	std::string hier = netlist.realm.getHierarchicalPath();
-	log("While generating the netlist content of HDL instance %s\n\tof module %s\n", hier.c_str(),
-			std::string{netlist.realm.getDefinition().name}.c_str());
+	log("While generating the netlist content of HDL instance %s\n", hier.c_str());
+	log("\tof module %s\n", std::string{netlist.realm.getDefinition().name}.c_str());
 	std::string params;
 	for (auto param : netlist.realm.getParameters()) {
 		params += " " + std::string{param->symbol.name};
@@ -119,7 +119,8 @@ template <typename T>
 	}
 	log("\twith parameters%s\n", params.c_str());
 	std::string hier2 = symbol.getHierarchicalPath();
-	log("\twire for symbol %s is missing\n\t(id %s)\n", hier2.c_str(), netlist.id(symbol).c_str());
+	log("\twire for symbol %s is missing\n", hier2.c_str());
+	log("\t(id %s)\n", netlist.id(symbol).c_str());
 	log("remapped scopes:\n");
 	for (auto pair : netlist.scopes_remap) {
 		std::string hier3 = pair.first->asSymbol().getHierarchicalPath();
