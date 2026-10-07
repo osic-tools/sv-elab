@@ -419,6 +419,41 @@ void ProceduralContext::set_effects_trigger(RTLIL::Cell *cell)
 }
 #endif // SLANG_NO_YOSYS
 
+bool ValuePattern::is_fully_concrete() const
+{
+	for (auto &b : bits)
+		if (b.is_wildcard())
+			return false;
+	return true;
+}
+
+bool ValuePattern::is_fully_def() const
+{
+	for (auto &b : bits)
+		if (b.is_wildcard() || !b.net.is_def())
+			return false;
+	return true;
+}
+
+bool ValuePattern::is_fully_const() const
+{
+	for (auto &b : bits)
+		if (!b.is_wildcard() && !b.net.is_const())
+			return false;
+	return true;
+}
+
+ir::Value ValuePattern::to_value() const
+{
+	ir::Value v;
+	v.reserve(bits.size());
+	for (auto &b : bits) {
+		log_assert(!b.is_wildcard());
+		v.append(b.net);
+	}
+	return v;
+}
+
 ir::Net matches_pattern(NetlistContext &netlist, const ValuePattern &pattern, ir::Value &value)
 {
 	ir::Value sig, filtered_pat;

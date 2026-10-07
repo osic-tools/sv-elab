@@ -836,40 +836,10 @@ struct ValuePattern
 	uint64_t size() const { return bits.size(); }
 	bool empty() const { return bits.empty(); }
 
-	bool is_fully_concrete() const
-	{
-		for (auto &b : bits)
-			if (b.is_wildcard())
-				return false;
-		return true;
-	}
-
-	bool is_fully_def() const
-	{
-		for (auto &b : bits)
-			if (b.is_wildcard() || !b.net.is_def())
-				return false;
-		return true;
-	}
-
-	bool is_fully_const() const
-	{
-		for (auto &b : bits)
-			if (!b.is_wildcard() && !b.net.is_const())
-				return false;
-		return true;
-	}
-
-	ir::Value to_value() const
-	{
-		ir::Value v;
-		v.reserve(bits.size());
-		for (auto &b : bits) {
-			log_assert(!b.is_wildcard());
-			v.append(b.net);
-		}
-		return v;
-	}
+	bool is_fully_concrete() const;
+	bool is_fully_def() const;
+	bool is_fully_const() const;
+	ir::Value to_value() const;
 };
 
 // slang_frontend.cc

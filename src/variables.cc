@@ -251,4 +251,33 @@ bool VariableBits::has_special_nets()
 	return false;
 }
 
+std::string VariableBit::index_text() const
+{
+	if (variable.bitwidth() == 1)
+		return "";
+	else
+		return "[" + std::to_string(offset) + "]";
+}
+
+std::string VariableBit::text() const
+{
+	return variable.text() + index_text();
+}
+
+std::string VariableChunk::slice_text() const
+{
+	if (length == variable.bitwidth())
+		return "";
+	else if (length > 1)
+		// TODO: hdl indices
+		return "[" + std::to_string(base + length - 1) + ":" + std::to_string(base) + "]";
+	else
+		return "[" + std::to_string(base) + "]";
+}
+
+std::string VariableChunk::text() const
+{
+	return variable.text() + slice_text();
+}
+
 } // namespace slang_frontend

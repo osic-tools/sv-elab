@@ -36,15 +36,8 @@ struct VariableBit
 	int hash() const { return hashlib::hash_ops<Label>::hash(label()); }
 #endif
 
-	std::string index_text() const
-	{
-		if (variable.bitwidth() == 1)
-			return "";
-		else
-			return Yosys::stringf("[%" PRIu64 "]", offset);
-	}
-
-	std::string text() const { return variable.text() + index_text(); }
+	std::string index_text() const;
+	std::string text() const;
 };
 
 // VariableChunk is to VariableBit
@@ -68,18 +61,8 @@ struct VariableChunk
 		return variable == other.variable && base == other.base && length == other.length;
 	}
 
-	std::string slice_text() const
-	{
-		if (length == variable.bitwidth())
-			return "";
-		else if (length > 1)
-			// TODO: hdl indices
-			return Yosys::stringf("[%" PRIu64 ":%" PRIu64 "]", base + length - 1, base);
-		else
-			return Yosys::stringf("[%" PRIu64 "]", base);
-	}
-
-	std::string text() const { return variable.text() + slice_text(); }
+	std::string slice_text() const;
+	std::string text() const;
 };
 
 class VariableBits
