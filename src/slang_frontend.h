@@ -792,12 +792,12 @@ extern void export_blackbox_to_rtlil(NetlistContext &netlist, const ast::Instanc
 
 // abort_helpers.cc/slang_frontend.cc
 [[noreturn]] void error_(const char *file, int line, const char *condition);
-[[noreturn]] void unimplemented_(const ast::Symbol &obj, const char *file, int line, const char *condition);
-[[noreturn]] void unimplemented_(const ast::Expression &obj, const char *file, int line, const char *condition);
-[[noreturn]] void unimplemented_(const ast::Statement &obj, const char *file, int line, const char *condition);
-[[noreturn]] void unimplemented_(const ast::TimingControl &obj, const char *file, int line, const char *condition);
-#define require(obj, property) do { if (!(property)) unimplemented_(obj, __FILE__, __LINE__, #property); } while(0)
-#define unimplemented(obj) do { slang_frontend::unimplemented_(obj, __FILE__, __LINE__, NULL); } while (0)
+[[noreturn]] void error_on_node_(const ast::Symbol &obj, const char *file, int line, const char *condition);
+[[noreturn]] void error_on_node_(const ast::Expression &obj, const char *file, int line, const char *condition);
+[[noreturn]] void error_on_node_(const ast::Statement &obj, const char *file, int line, const char *condition);
+[[noreturn]] void error_on_node_(const ast::TimingControl &obj, const char *file, int line, const char *condition);
+#define require(obj, property) do { if (!(property)) error_on_node_(obj, __FILE__, __LINE__, #property); } while(0)
+#define unimplemented(obj) do { slang_frontend::error_on_node_(obj, __FILE__, __LINE__, NULL); } while (0)
 #define ast_invariant(obj, property) require(obj, property)
 #define ast_unreachable(obj) unimplemented(obj)
 #define assert_invariant(property) do { if (!(property)) error_(__FILE__, __LINE__, #property); } while (0)

@@ -46,7 +46,7 @@ static slang::SourceRange source_location(const ast::TimingControl &stmt)
 }
 
 template <typename T>
-[[noreturn]] void unimplemented__(const T &obj, const char *file, int line, const char *condition)
+[[noreturn]] void error_on_node__(const T &obj, const char *file, int line, const char *condition)
 {
 	slang::JsonWriter writer;
 	writer.setPrettyPrint(true);
@@ -81,28 +81,28 @@ template <typename T>
 	log_error("Assert `%s' failed in %s:%d.\n", condition, file, line);
 }
 
-[[noreturn]] void unimplemented_(
+[[noreturn]] void error_on_node_(
 		const ast::Symbol &obj, const char *file, int line, const char *condition)
 {
-	unimplemented__(obj, file, line, condition);
+	error_on_node__(obj, file, line, condition);
 }
 
-[[noreturn]] void unimplemented_(
+[[noreturn]] void error_on_node_(
 		const ast::Expression &obj, const char *file, int line, const char *condition)
 {
-	unimplemented__(obj, file, line, condition);
+	error_on_node__(obj, file, line, condition);
 }
 
-[[noreturn]] void unimplemented_(
+[[noreturn]] void error_on_node_(
 		const ast::Statement &obj, const char *file, int line, const char *condition)
 {
-	unimplemented__(obj, file, line, condition);
+	error_on_node__(obj, file, line, condition);
 }
 
-[[noreturn]] void unimplemented_(
+[[noreturn]] void error_on_node_(
 		const ast::TimingControl &obj, const char *file, int line, const char *condition)
 {
-	unimplemented__(obj, file, line, condition);
+	error_on_node__(obj, file, line, condition);
 }
 
 [[noreturn]] void wire_missing_(
