@@ -52,7 +52,7 @@ struct VariableChunk
 
 	VariableBit operator[](uint64_t key) const
 	{
-		log_assert(key < length);
+		assert_invariant(key < length);
 		return VariableBit{variable, base + key};
 	}
 
@@ -192,7 +192,7 @@ public:
 	{
 		unpack();
 		auto &bits = as_bits();
-		log_assert(index >= 0 && index < (int)bits.size());
+		assert_invariant(index >= 0 && index < (int)bits.size());
 		bits.erase(bits.begin() + index);
 	}
 
@@ -303,7 +303,7 @@ public:
 		{
 			offset += chunk.length;
 			if (offset < container.bitwidth()) {
-				log_assert(!container.is_chunk());
+				assert_invariant(!container.is_chunk());
 				auto &bits = container.as_bits();
 				chunk = {bits[offset].variable, bits[offset].offset, 1};
 				fixup_chunk();

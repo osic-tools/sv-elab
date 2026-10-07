@@ -72,7 +72,7 @@ std::vector<const ast::Scope *> scope_path(const ast::Scope *scope, bool stop_at
 
 bool order_symbols_within_scope(const ast::Symbol *lhs, const ast::Symbol *rhs)
 {
-	log_assert(lhs != rhs);
+	assert_invariant(lhs != rhs);
 
 	if (lhs->getIndex() != rhs->getIndex())
 		return lhs->getIndex() < rhs->getIndex();
@@ -108,7 +108,7 @@ bool order_symbols_within_scope(const ast::Symbol *lhs, const ast::Symbol *rhs)
 		if (lblock.getArrayIndex()) {
 			if (*lblock.getArrayIndex() != *rblock.getArrayIndex()) {
 				auto result = (*lblock.getArrayIndex()) < (*rblock.getArrayIndex());
-				log_assert(!result.isUnknown());
+				assert_invariant(!result.isUnknown());
 				return (bool)result;
 			}
 		} else {
@@ -133,12 +133,12 @@ bool order_symbols_within_scope(const ast::Symbol *lhs, const ast::Symbol *rhs)
 	}
 
 	// Should be unreachable
-	log_abort();
+	assert_invariant(false && "unreachable");
 }
 
 bool order_scopes(const ast::Scope *lhs, const ast::Scope *rhs)
 {
-	log_assert(lhs != rhs);
+	assert_invariant(lhs != rhs);
 
 	if (!lhs)
 		return true;
@@ -154,7 +154,7 @@ bool order_scopes(const ast::Scope *lhs, const ast::Scope *rhs)
 			return order_symbols_within_scope(&lhs_path[i]->asSymbol(), &rhs_path[i]->asSymbol());
 	}
 
-	log_assert(lhs_path.size() != rhs_path.size());
+	assert_invariant(lhs_path.size() != rhs_path.size());
 	return lhs_path.size() < rhs_path.size();
 }
 
@@ -176,7 +176,7 @@ bool Variable::operator<(const Variable &other) const
 	} else if (kind == Dummy) {
 		return width < other.width;
 	}
-	log_abort();
+	assert_invariant(false && "unreachable");
 }
 
 Variable::HashLabel Variable::hash_label() const
@@ -188,7 +188,7 @@ Variable::HashLabel Variable::hash_label() const
 	case Local:      ptr = (void *)symbol; break;
 	case EscapeFlag: num = id; break;
 	case Dummy:      num = width; break;
-	default:         log_abort();
+	default:         assert_invariant(false && "unreachable");
 	}
 
 	return std::make_tuple((int)kind, ptr, num);
@@ -210,7 +210,7 @@ uint64_t Variable::bitwidth() const
 	case Local:      return symbol->getType().getBitstreamWidth();
 	case EscapeFlag: return 1;
 	case Dummy:      return width;
-	default:         log_abort();
+	default:         assert_invariant(false && "unreachable");
 	}
 }
 
@@ -228,7 +228,7 @@ std::string Variable::text() const
 			   std::to_string(depth) + ")";
 	case EscapeFlag: return "flag#" + std::to_string(id);
 	case Dummy:      return "dummy(" + std::to_string(width) + ")";
-	default:         log_abort();
+	default:         assert_invariant(false && "unreachable");
 	}
 }
 

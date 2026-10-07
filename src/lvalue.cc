@@ -98,7 +98,7 @@ std::optional<LValue> LValue::analyze(
 			return LValue::memoryWrite(variable, address, ese.type->getBitstreamWidth());
 #else
 			// Unreachable: memory inference is disabled under SLANG_NO_YOSYS
-			log_abort();
+			assert_invariant(false && "unreachable");
 #endif
 		}
 
@@ -203,7 +203,7 @@ bool LValue::is_static()
 
 VariableBits LValue::evaluate_vbits()
 {
-	log_assert(static_);
+	assert_invariant(static_);
 
 	if (auto variable = std::get_if<Variable>(&descriptor)) {
 		return *variable;
@@ -221,8 +221,7 @@ VariableBits LValue::evaluate_vbits()
 		auto inner_vbits = member_acc->inner->evaluate_vbits();
 		return inner_vbits.extract(member_acc->base_offset, bitsize);
 	} else {
-		// unreachable
-		log_abort();
+		assert_invariant(false && "unreachable");
 	}
 }
 

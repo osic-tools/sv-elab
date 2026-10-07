@@ -154,7 +154,7 @@ void finalize_variable_initialization(NetlistContext &netlist)
 				bool register_driven = netlist.register_driven_variables.count(vbit);
 				bool driven = netlist.driven_variables.count(vbit);
 				// register_driven implies driven
-				log_assert(!register_driven || driven);
+				assert_invariant(!register_driven || driven);
 				ir::Trit state = netlist.initial_state.at(vbit, ir::Sx);
 				if (register_driven) {
 					attr_value.set(i, state);

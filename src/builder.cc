@@ -40,7 +40,7 @@ ir::Net GraphBuilder::ReduceBool(ir::Value a)
 
 ir::Value GraphBuilder::Demux(ir::Value a, ir::Value s)
 {
-	log_assert(s.size() < 24);
+	assert_invariant(s.size() < 24);
 	if (s.is_fully_const()) {
 		ir::Value zeropad(ir::S0, a.size());
 		int idx_const = s.as_const().as_int();
@@ -101,7 +101,7 @@ ir::Net GraphBuilder::LogicNot(ir::Value a)
 
 ir::Value GraphBuilder::Mux(ir::Value a, ir::Value b, ir::Net s)
 {
-	log_assert(a.size() == b.size());
+	assert_invariant(a.size() == b.size());
 	if (s == ir::S0)
 		return a;
 	if (s == ir::S1)
@@ -111,8 +111,8 @@ ir::Value GraphBuilder::Mux(ir::Value a, ir::Value b, ir::Net s)
 
 ir::Value GraphBuilder::Bwmux(ir::Value a, ir::Value b, ir::Value s)
 {
-	log_assert(a.size() == b.size());
-	log_assert(a.size() == s.size());
+	assert_invariant(a.size() == b.size());
+	assert_invariant(a.size() == s.size());
 	if (s.is_fully_const()) {
 		ir::Value result(ir::Sx, a.size());
 		for (uint64_t i = 0; i < a.size(); i++) {
@@ -130,7 +130,7 @@ ir::Value GraphBuilder::Bwmux(ir::Value a, ir::Value b, ir::Value s)
 ir::Value GraphBuilder::Shift(ir::Value a, ir::Value b, bool b_signed, uint64_t result_width)
 {
 	if (b.is_fully_const() && b.size() < 32) {
-		log_assert(!a.empty());
+		assert_invariant(!a.empty());
 		int shift_amount = b.as_int(b_signed);
 		ir::Value ret;
 		int i;
@@ -150,7 +150,7 @@ ir::Value GraphBuilder::Shift(ir::Value a, ir::Value b, bool b_signed, uint64_t 
 ir::Value GraphBuilder::Shiftx(ir::Value a, ir::Value b, bool b_signed, uint64_t result_width)
 {
 	if (b.is_fully_const() && b.size() < 32) {
-		log_assert(!a.empty());
+		assert_invariant(!a.empty());
 		int shift_amount = b.as_int(b_signed);
 		ir::Value ret;
 		int i;
@@ -174,8 +174,8 @@ ir::Value GraphBuilder::Neg(ir::Value a, bool signed_)
 
 ir::Value GraphBuilder::Bmux(ir::Value a, ir::Value s)
 {
-	log_assert(a.size() % (1 << s.size()) == 0);
-	log_assert(a.size() >= 1ULL << s.size());
+	assert_invariant(a.size() % (1 << s.size()) == 0);
+	assert_invariant(a.size() >= 1ULL << s.size());
 	int stride = a.size() >> s.size();
 	if (s.is_fully_def() && s.width() < 32) {
 		return a.extract(s.as_const().as_int() * stride, stride);
@@ -264,7 +264,7 @@ ir::Value GraphBuilder::Biop(ast::BinaryOperator op, ir::Value a, ir::Value b, b
 							: 1;
 		int al = 0, bl = 0;
 		// Add +1 to avoid overflows
-		log_assert(a_signed == b_signed);
+		assert_invariant(a_signed == b_signed);
 		uint64_t width = std::max(a.size(), b.size()) + 1;
 
 		bool seen_undef_bit = false;

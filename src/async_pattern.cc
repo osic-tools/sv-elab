@@ -30,8 +30,8 @@ namespace slang_frontend {
 
 void TimingPatternInterpretor::handle_always(const ast::ProceduralBlockSymbol &symbol)
 {
-	log_assert(symbol.procedureKind == ast::ProceduralBlockKind::Always ||
-			   symbol.procedureKind == ast::ProceduralBlockKind::AlwaysFF);
+	assert_invariant(symbol.procedureKind == ast::ProceduralBlockKind::Always ||
+					 symbol.procedureKind == ast::ProceduralBlockKind::AlwaysFF);
 
 	if (symbol.getBody().kind == ast::StatementKind::Block ||
 			symbol.getBody().kind == ast::StatementKind::ConcurrentAssertion ||
@@ -101,7 +101,7 @@ void TimingPatternInterpretor::handle_always(const ast::ProceduralBlockSymbol &s
 			implicit = true;
 		} break;
 
-		case ast::TimingControlKind::EventList: log_abort();
+		case ast::TimingControlKind::EventList: assert_invariant(false && "unreachable");
 
 		case ast::TimingControlKind::Delay: {
 			if (!settings.ignore_timing.value_or(false))
@@ -232,7 +232,7 @@ static std::optional<AloadConditionValue> interpret_aload_condition(
 void TimingPatternInterpretor::interpret_async_pattern(const ast::ProceduralBlockSymbol &symbol,
 		std::vector<const ast::SignalEventControl *> triggers, const ast::Statement &body)
 {
-	log_assert(symbol.getBody().kind == ast::StatementKind::Timed);
+	assert_invariant(symbol.getBody().kind == ast::StatementKind::Timed);
 	const auto &timed = symbol.getBody().as<ast::TimedStatement>();
 	const ast::Statement *stmt = &body;
 
@@ -345,7 +345,7 @@ void TimingPatternInterpretor::interpret(const ast::ProceduralBlockSymbol &symbo
 		// Final blocks are ignored by synthesis
 		break;
 
-	default: log_abort();
+	default: assert_invariant(false && "unreachable");
 	}
 }
 

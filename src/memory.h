@@ -186,7 +186,7 @@ struct InferredMemoryDetector : public TimingPatternInterpretor,
 				}
 			}
 
-			log_abort(); // unreachable
+			assert_invariant(false && "unreachable");
 		}
 
 		stmt.expr.visit(*this);

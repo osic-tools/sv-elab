@@ -185,6 +185,7 @@ using RTLIL::escape_id;
 #else
 // log_abort is a macro in this build
 #endif
+#define assert_invariant(property) log_assert(property)
 namespace ast = ::slang::ast;
 
 struct NetlistContext;

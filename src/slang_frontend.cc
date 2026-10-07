@@ -278,7 +278,7 @@ const std::optional<ir::Const> NetlistContext::convert_const(const slang::Consta
 			}
 		}
 
-		log_assert(bits.size() == constval.getBitstreamWidth());
+		assert_invariant(bits.size() == constval.getBitstreamWidth());
 		return bits;
 	} else if (constval.isString()) {
 		ir::Const ret = convert_svint(constval.convertToInt().integer(), loc);
@@ -290,7 +290,7 @@ const std::optional<ir::Const> NetlistContext::convert_const(const slang::Consta
 		return {};
 	}
 
-	log_abort();
+	assert_invariant(false && "unreachable");
 }
 
 };
@@ -407,7 +407,7 @@ void ProcessTiming::extract_trigger(NetlistContext &netlist, Yosys::Cell *cell, 
 		break;
 	}
 	default:
-		log_abort();
+		assert_invariant(false && "unreachable");
 	}
 }
 
@@ -448,7 +448,7 @@ ir::Value ValuePattern::to_value() const
 	ir::Value v;
 	v.reserve(bits.size());
 	for (auto &b : bits) {
-		log_assert(!b.is_wildcard());
+		assert_invariant(!b.is_wildcard());
 		v.append(b.net);
 	}
 	return v;
@@ -489,7 +489,7 @@ ir::Value inside_comparison(EvalContext &eval, ir::Value left,
 			ast_invariant(expr, const_result.isInteger());
 			auto pat = svint_to_pattern(eval.netlist, const_result.integer(), /* match_x= */ true,
 								/* match_z= */ true, expr.sourceRange.start());
-			log_assert(pat.size() == left.size());
+			assert_invariant(pat.size() == left.size());
 			return matches_pattern(eval.netlist, pat, left);
 		} else {
 			ir::Value expr_signal = eval(expr);
@@ -522,7 +522,7 @@ using VariableState = ProceduralContext::VariableState;
 
 void VariableState::set(VariableBits lhs, ir::Value value)
 {
-	log_assert(lhs.bitwidth() == (uint64_t)value.size());
+	assert_invariant(lhs.bitwidth() == (uint64_t)value.size());
 
 	for (uint64_t i = 0; i < lhs.bitwidth(); i++) {
 		VariableBit bit = lhs[i];
@@ -547,7 +547,7 @@ ir::Value VariableState::evaluate(NetlistContext &netlist, VariableBits vbits)
 		} else if (visible_assignments.count(vbit)) {
 			ret.append(visible_assignments.at(vbit));
 		} else {
-			log_assert(vbit.variable.kind == Variable::Static);
+			assert_invariant(vbit.variable.kind == Variable::Static);
 			ret.append(netlist.wire(*vbit.variable.get_symbol())[(int)vbit.offset]);
 		}
 	}
@@ -561,7 +561,7 @@ ir::Value VariableState::evaluate(NetlistContext &netlist, VariableChunk vchunk)
 		if (visible_assignments.count(vchunk[i])) {
 			ret.append(visible_assignments.at(vchunk[i]));
 		} else {
-			log_assert(vchunk.variable.kind == Variable::Static);
+			assert_invariant(vchunk.variable.kind == Variable::Static);
 			ret.append(netlist.wire(*vchunk.variable.get_symbol())[(int)(vchunk.base + i)]);
 		}
 	}
@@ -648,7 +648,7 @@ VariableBits EvalContext::lhs(const ast::Expression &expr, bool silent)
 	}
 
 	VariableBits ret = analyzed_lvalue->evaluate_vbits();
-	log_assert(ret.bitwidth() == expr.type->getBitstreamWidth());
+	assert_invariant(ret.bitwidth() == expr.type->getBitstreamWidth());
 	return ret;
 }
 
@@ -797,7 +797,7 @@ ir::Value EvalContext::apply_conversion(const ast::ConversionExpression &conv, i
 	const ast::Type &from = conv.operand().type->getCanonicalType();
 	const ast::Type &to = conv.type->getCanonicalType();
 
-	log_assert(op.size() == from.getBitstreamWidth());
+	assert_invariant(op.size() == from.getBitstreamWidth());
 
 	if (from.isIntegral() && to.isIntegral()) {
 		bool sign_extend = (conv.conversionKind == ast::ConversionKind::Propagated)
@@ -821,7 +821,7 @@ ir::Value EvalContext::apply_nested_conversion(const ast::Expression &expr, ir::
 		ir::Value value = apply_nested_conversion(conv.operand(), op);
 		return apply_conversion(conv, value);
 	} else {
-		log_abort();
+		assert_invariant(false && "unreachable");
 	}
 }
 
@@ -920,14 +920,14 @@ ir::Value handle_sampled_value_func(EvalContext &eval, const ast::CallExpression
 	case SampledValueFunc::Fell:
 		return netlist.LogicAnd(ir::Net(past_val[0]), netlist.LogicNot(ir::Net(current_val[0])));
 	default:
-		log_abort();
+		assert_invariant(false && "unreachable");
 	}
 }
 
 static const ir::Const reverse_data(ir::Const &orig, int width)
 {
 	std::vector<ir::Trit> bits;
-	log_assert(orig.size() % width == 0);
+	assert_invariant(orig.size() % width == 0);
 	bits.reserve(orig.size());
 	for (int i = orig.size() - width; i >= 0; i -= width)
 		bits.insert(bits.end(), orig.begin() + i, orig.begin() + i + width);
@@ -1215,7 +1215,7 @@ void handle_display([[maybe_unused]] ProceduralContext &context, [[maybe_unused]
 	cell->parameters[ID::PRIORITY] = --context.effects_priority;
 	std::vector<Yosys::VerilogFmtArg> fmt_args;
 	for (auto arg : call.arguments()) {
-		log_assert(arg);
+		assert_invariant(arg);
 		Yosys::VerilogFmtArg fmt_arg = {};
 		// TODO: location info in fmt_arg
 		switch (arg->kind) {
@@ -1370,7 +1370,7 @@ ir::Value EvalContext::operator()(ast::Expression const &expr)
 
 			ast_invariant(symbol, ast::ValueSymbol::isKind(symbol.kind));
 			Variable variable1 = variable(symbol.as<ast::ValueSymbol>());
-			log_assert((bool) variable1);
+			assert_invariant((bool) variable1);
 			if (procedural && (!in_sva_expression || variable1.kind != Variable::Static)) {
 				if (procedural->timing.kind == ProcessTiming::Initial && ast::NetSymbol::isKind(symbol.kind)) {
 					netlist.add_diag(diag::ReadingNetStateFromInitialBlockUnsupported, expr.sourceRange);
@@ -1522,7 +1522,7 @@ ir::Value EvalContext::operator()(ast::Expression const &expr)
 			if (netlist.is_inferred_memory(elemsel.value()) && !in_sva_expression) {
 				uint64_t width = elemsel.type->getBitstreamWidth();
 				auto memory_symbol = &elemsel.value().as<ast::ValueExpressionBase>().symbol;
-				log_assert(netlist.emitted_mems.count(memory_symbol));
+				assert_invariant(netlist.emitted_mems.count(memory_symbol));
 				ir::Memory *memory = netlist.emitted_mems.at(memory_symbol);
 				ret = netlist.add_placeholder_signal(width);
 				// TODO: signedness
@@ -1698,7 +1698,7 @@ done:
 
 ir::Value EvalContext::eval_signed(ast::Expression const &expr)
 {
-	log_assert(expr.type);
+	assert_invariant(expr.type);
 
 	if (expr.type->isNumeric() && !expr.type->isSigned())
 		return {ir::S0, (*this)(expr)};
@@ -1869,7 +1869,7 @@ public:
 						   const ast::Statement &sync_body,
 						   std::span<AsyncBranch> async)
 	{
-		log_assert(symbol.getBody().kind == ast::StatementKind::Timed);
+		assert_invariant(symbol.getBody().kind == ast::StatementKind::Timed);
 		const auto &timed = symbol.getBody().as<ast::TimedStatement>();
 
 #ifndef SLANG_MUX_LOWERING
@@ -1882,7 +1882,7 @@ public:
 			prologue_timing.triggers.push_back({netlist.eval(clock.expr).as_net(), clock.edge == ast::EdgeKind::PosEdge, &clock});
 			for (auto &abranch : async)	{
 				ir::Value sig = netlist.convert_static(abranch.trigger);
-				log_assert(sig.size() == 1);
+				assert_invariant(sig.size() == 1);
 				prologue_timing.triggers.push_back({sig.as_net(), abranch.polarity, nullptr});
 			}
 		}
@@ -1908,7 +1908,7 @@ public:
 
 		for (auto &async_branch : async) {
 			ir::Value sig = netlist.convert_static(async_branch.trigger);
-			log_assert(sig.size() == 1);
+			assert_invariant(sig.size() == 1);
 
 			ProcessTiming branch_timing(ProcessTiming::Implicit);
 			ir::Value sig_depol = async_branch.polarity ? sig : netlist.LogicNot(sig);
@@ -1965,7 +1965,7 @@ public:
 
 				if (aloads.empty()) {
 					for (auto [named_chunk, name] : generate_subfield_names(driven_chunk, type)) {
-						log_assert(named_chunk.variable.get_symbol() != nullptr);
+						assert_invariant(named_chunk.variable.get_symbol() != nullptr);
 						auto symbol = named_chunk.variable.get_symbol();
 						std::string base_name = "$driver$"s + netlist.unescaped_id(*symbol) + name;
 
@@ -2006,7 +2006,7 @@ public:
 					if (!aldff_q.empty()) {
 						for (auto driven_chunk2 : aldff_q.chunks())
 						for (auto [named_chunk, name] : generate_subfield_names(driven_chunk2, type)) {
-							log_assert(named_chunk.variable.get_symbol() != nullptr);
+							assert_invariant(named_chunk.variable.get_symbol() != nullptr);
 							auto symbol = named_chunk.variable.get_symbol();
 							std::string base_name = "$driver$"s + netlist.unescaped_id(*symbol) + name;
 
@@ -2047,7 +2047,7 @@ public:
 
 						for (auto driven_chunk2 : dffe_q.chunks())
 						for (auto [named_chunk, name] : generate_subfield_names(driven_chunk2, type)) {
-							log_assert(named_chunk.variable.get_symbol() != nullptr);
+							assert_invariant(named_chunk.variable.get_symbol() != nullptr);
 							auto symbol = named_chunk.variable.get_symbol();
 							std::string base_name = "$driver$"s + netlist.unescaped_id(*symbol) + name;
 
@@ -2062,7 +2062,7 @@ public:
 						}
 					}
 				} else {
-					log_abort();
+					assert_invariant(false && "unreachable");
 				}
 			}
 
@@ -2159,7 +2159,7 @@ public:
 		}
 #else
 		RTLIL::Wire *w = netlist.wire(*symbol.internalSymbol).raw().as_wire();
-		log_assert(w);
+		assert_invariant(w);
 		switch (symbol.direction) {
 		case ast::ArgumentDirection::In:
 			if (is_special_net(*symbol.internalSymbol)) {
@@ -2229,7 +2229,7 @@ public:
 			ast_invariant(port, ast::ValueSymbol::isKind(port.internalSymbol->kind));
 			internal_signal = Variable::from_symbol(&port.internalSymbol->as<ast::ValueSymbol>());
 		}
-		log_assert(internal_signal.bitwidth() == connection.bitwidth());
+		assert_invariant(internal_signal.bitwidth() == connection.bitwidth());
 
 		switch (port.direction) {
 		case ast::ArgumentDirection::Out:
@@ -2455,7 +2455,7 @@ public:
 				}
 			}
 		} else {
-			log_assert(sym.isModule());
+			assert_invariant(sym.isModule());
 			auto ref_body = &get_instance_body(settings, sym);
 			ast_invariant(sym, ref_body->parentInstance != nullptr);
 			auto [submodule, inserted] = queue.get_or_emplace(ref_body, netlist, *ref_body->parentInstance);
@@ -2805,7 +2805,7 @@ public:
 			},
 			[&](auto &, const ast::ModportPortSymbol &port) {
 				RTLIL::Wire *w = netlist.wire(port).raw().as_wire();
-				log_assert(w);
+				assert_invariant(w);
 				switch (port.direction) {
 				case ast::ArgumentDirection::In:
 					netlist.register_driven(Variable::from_symbol(&port));
@@ -2823,7 +2823,7 @@ public:
 					netlist.add_diag(diag::RefUnsupported, port.location);
 					break;
 				default:
-					log_abort();
+					assert_invariant(false && "unreachable");
 				}
 			}
 		));
@@ -3105,7 +3105,7 @@ static void build_hierpath2(NetlistContext &netlist,
 static bool build_hierpath3(const ast::Scope *relative_to,
 							std::ostringstream &s, const ast::Scope *scope)
 {
-	log_assert(scope);
+	assert_invariant(scope);
 
 	if (relative_to == scope)
 		return false;
@@ -3121,7 +3121,7 @@ static bool build_hierpath3(const ast::Scope *relative_to,
 	if (auto parent = symbol->getParentScope()) {
 		pending = build_hierpath3(relative_to, s, parent);
 	} else {
-		log_abort();
+		assert_invariant(false && "unreachable");
 	}
 
 	if ((symbol->kind == ast::SymbolKind::GenerateBlockArray ||
@@ -3241,7 +3241,7 @@ bool is_special_net_type(const ast::NetType &type)
 		case ast::NetType::UWire:
 			return false;
 		default:
-			log_abort();
+			assert_invariant(false && "unreachable");
 	}
 }
 
@@ -3484,7 +3484,7 @@ const ast::InstanceBodySymbol *NetlistContext::find_symbol_realm(const ast::Symb
 		}
 		if (scope_symbol.kind == ast::SymbolKind::InstanceBody) {
 			auto parent = scope_symbol.as<ast::InstanceBodySymbol>().parentInstance;
-			log_assert(parent->getParentScope());
+			assert_invariant(parent->getParentScope());
 			if (parent->getParentScope()->asSymbol().kind == ast::SymbolKind::Root
 					|| !should_dissolve(*parent)) {
 				return &scope_symbol.as<ast::InstanceBodySymbol>();
@@ -3506,10 +3506,10 @@ const ast::InstanceBodySymbol &NetlistContext::find_common_ancestor(const ast::I
 		while (body->parentInstance->getParentScope()->asSymbol().kind !=
 					ast::SymbolKind::Root) {
 			body = find_symbol_realm(*body->parentInstance);
-			log_assert(body);
+			assert_invariant(body);
 			path.push_back(body);
-			log_assert(body->parentInstance);
-			log_assert(body->parentInstance->getParentScope());
+			assert_invariant(body->parentInstance);
+			assert_invariant(body->parentInstance->getParentScope());
 		}
 		std::reverse(std::begin(path), std::end(path));
 		return path;
@@ -3523,7 +3523,7 @@ const ast::InstanceBodySymbol &NetlistContext::find_common_ancestor(const ast::I
 		if (pa[i] != pb[i])
 			break;
 	}
-	log_assert(i > 0);
+	assert_invariant(i > 0);
 	return *pa[i - 1];
 }
 
@@ -3575,7 +3575,7 @@ ir::Value NetlistContext::convert_static(VariableBits bits)
 			ret.append(add_placeholder_signal(vchunk.length, "dummy"));
 			break;
 		default:
-			log_abort();
+			assert_invariant(false && "unreachable");
 		}
 	}
 
@@ -3615,7 +3615,7 @@ void NetlistContext::prepare_interface_ports()
 	// interface instances that live outside the realm body.
 
 	auto *parent_scope = realm_instance.getParentScope();
-	log_assert(parent_scope != nullptr);
+	assert_invariant(parent_scope != nullptr);
 	bool is_top_level = parent_scope->asSymbol().kind == ast::SymbolKind::Root;
 
 	for (auto *conn : realm_instance.getPortConnections()) {
@@ -3645,7 +3645,7 @@ void NetlistContext::prepare_interface_ports()
 #ifndef SLANG_NO_YOSYS
 				ir::Value port_sig = add_wire(port);
 				RTLIL::Wire *w = port_sig.raw_.as_wire();
-				log_assert(w);
+				assert_invariant(w);
 				switch (port.direction) {
 				case ast::ArgumentDirection::In:
 					register_driven(Variable::from_symbol(&port));
@@ -3663,7 +3663,7 @@ void NetlistContext::prepare_interface_ports()
 					add_diag(diag::RefUnsupported, port.location);
 					break;
 				default:
-					log_abort();
+					assert_invariant(false && "unreachable");
 				}
 #else
 				switch (port.direction) {

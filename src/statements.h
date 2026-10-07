@@ -68,8 +68,8 @@ struct SwitchHelper
 
 	~SwitchHelper()
 	{
-		log_assert(!current_case_info.has_value());
-		log_assert(branch_updates.empty() || finished);
+		assert_invariant(!current_case_info.has_value());
+		assert_invariant(branch_updates.empty() || finished);
 	}
 
 	SwitchHelper(const SwitchHelper &) = delete;
@@ -102,7 +102,7 @@ struct SwitchHelper
 		auto &netlist = context.netlist;
 		save_snap = {};
 		vstate.save(save_snap);
-		log_assert(!current_case_info.has_value());
+		assert_invariant(!current_case_info.has_value());
 		ir::Net cond = compute_condition(netlist, compare);
 		current_case_info = CaseInfo{compare, cond};
 		context.enabled = netlist.LogicAnd(masked_enabled, ir::Value(cond));
@@ -111,7 +111,7 @@ struct SwitchHelper
 	void exit_branch()
 	{
 		auto &netlist = context.netlist;
-		log_assert(current_case_info.has_value());
+		assert_invariant(current_case_info.has_value());
 		masked_enabled =
 				netlist.LogicAnd(masked_enabled, netlist.LogicNot(current_case_info->cond));
 		auto updates = vstate.restore(save_snap);
@@ -217,7 +217,7 @@ struct SwitchHelper
 		for (auto chunk : updated_anybranch.chunks()) {
 			if (chunk.variable.kind != Variable::Static && eos_variables.count(chunk.variable)) {
 				for (uint64_t i = 0; i < chunk.bitwidth(); i++)
-					log_assert(!va.count(chunk[i]));
+					assert_invariant(!va.count(chunk[i]));
 				background.append(ir::Value(ir::Sx, chunk.bitwidth()));
 				continue;
 			}
@@ -281,8 +281,8 @@ struct SwitchHelper
 
 	~SwitchHelper()
 	{
-		log_assert(!entered);
-		log_assert(branch_updates.empty() || finished);
+		assert_invariant(!entered);
+		assert_invariant(branch_updates.empty() || finished);
 	}
 
 	SwitchHelper(const SwitchHelper &) = delete;
@@ -302,8 +302,8 @@ struct SwitchHelper
 	{
 		save_snap = {};
 		vstate.save(save_snap);
-		log_assert(!entered);
-		log_assert(current_case == parent);
+		assert_invariant(!entered);
+		assert_invariant(current_case == parent);
 		current_case = sw->add_case(compare);
 		current_case->statement = case_statement;
 		entered = true;
@@ -311,8 +311,8 @@ struct SwitchHelper
 
 	void exit_branch()
 	{
-		log_assert(entered);
-		log_assert(current_case != parent);
+		assert_invariant(entered);
+		assert_invariant(current_case != parent);
 		Case *this_case = current_case;
 		current_case = parent;
 		entered = false;
@@ -356,7 +356,7 @@ struct SwitchHelper
 		for (auto chunk : updated_anybranch.chunks()) {
 			if (chunk.variable.kind != Variable::Static && eos_variables.count(chunk.variable)) {
 				for (uint64_t i = 0; i < chunk.bitwidth(); i++)
-					log_assert(!va.count(chunk[i]));
+					assert_invariant(!va.count(chunk[i]));
 
 				continue;
 			}
@@ -391,7 +391,7 @@ struct SwitchHelper
 				// get the wire (or some part of it) which we created up above
 				ir::Value target_w;
 				for (uint64_t i = 0; i < chunk.bitwidth(); i++) {
-					log_assert(va.count(chunk[i]));
+					assert_invariant(va.count(chunk[i]));
 					target_w.append(va.at(chunk[i]));
 				}
 
@@ -448,7 +448,7 @@ public:
 		case ast::AssertionKind::Assert:        flavor = "assert"; break;
 		case ast::AssertionKind::Assume:        flavor = "assume"; break;
 		case ast::AssertionKind::CoverProperty: flavor = "cover"; break;
-		default:                                netlist.add_diag(diag::AssertionUnsupported, statement.sourceRange); return;
+		default: netlist.add_diag(diag::AssertionUnsupported, statement.sourceRange); return;
 		}
 
 #ifndef SLANG_NO_YOSYS
@@ -599,7 +599,7 @@ public:
 			} else if (disable_rv.as_bool()) {
 				break;
 			} else {
-				log_assert(!disable_rv.as_bool());
+				assert_invariant(!disable_rv.as_bool());
 			}
 
 			stmt->visit(*this);
@@ -673,7 +673,7 @@ public:
 		for (auto item : stmt.items) {
 			std::vector<ValuePattern> compares;
 			for (auto expr : item.expressions) {
-				log_assert(expr);
+				assert_invariant(expr);
 
 				if (stmt.condition == ast::CaseStatementCondition::Inside) {
 					require(stmt, stmt.expr.type->isIntegral());
@@ -686,7 +686,7 @@ public:
 					if (const_result && const_result.isInteger()) {
 						auto pat = svint_to_pattern(netlist, const_result.integer(), match_x,
 								match_z, expr->sourceRange.start());
-						log_assert(pat.size() == dispatch.size());
+						assert_invariant(pat.size() == dispatch.size());
 						compares.push_back(std::move(pat));
 						continue;
 					}
@@ -700,7 +700,7 @@ public:
 						}
 					}
 				}
-				log_assert(compare.size() == dispatch.size());
+				assert_invariant(compare.size() == dispatch.size());
 				compares.push_back(compare);
 			}
 			require(stmt, !compares.empty());
@@ -738,7 +738,7 @@ public:
 			} else if (joint_break.as_bool()) {
 				break;
 			} else {
-				log_assert(!joint_break.as_bool());
+				assert_invariant(!joint_break.as_bool());
 			}
 
 			{
@@ -782,7 +782,7 @@ public:
 			} else if (!cv.as_bool()) {
 				break;
 			} else {
-				log_assert(cv.as_bool());
+				assert_invariant(cv.as_bool());
 			}
 
 			{
@@ -798,7 +798,7 @@ public:
 			} else if (break_rv.as_bool()) {
 				break;
 			} else {
-				log_assert(!break_rv.as_bool());
+				assert_invariant(!break_rv.as_bool());
 			}
 
 			for (auto step : stmt.steps)
@@ -854,7 +854,7 @@ public:
 			} else if (break_rv.as_bool()) {
 				break;
 			} else {
-				log_assert(!break_rv.as_bool());
+				assert_invariant(!break_rv.as_bool());
 			}
 
 			bool doBreak = true;
@@ -918,7 +918,7 @@ public:
 	void init_nonstatic_variable(const ast::ValueSymbol &symbol)
 	{
 		Variable target = eval.variable(symbol);
-		log_assert((bool)target);
+		assert_invariant((bool)target);
 
 		if (!target.bitwidth())
 			return;
@@ -959,11 +959,11 @@ public:
 	void handle(const ast::ReturnStatement &stmt)
 	{
 		auto subroutine = context.get_current_subroutine();
-		log_assert(subroutine);
+		assert_invariant(subroutine);
 
 		if (stmt.expr) {
 			ast_invariant(stmt, subroutine->subroutineKind == ast::SubroutineKind::Function);
-			log_assert(subroutine->returnValVar);
+			assert_invariant(subroutine->returnValVar);
 			context.do_simple_assign(stmt.sourceRange.start(),
 					eval.variable(*subroutine->returnValVar), eval(*stmt.expr), true);
 		}

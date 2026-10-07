@@ -42,7 +42,7 @@ EnterAutomaticScopeGuard::~EnterAutomaticScopeGuard()
 {
 	if (scope) {
 		auto new_nest_level = --context.scope_nest_level.at(scope);
-		log_assert(new_nest_level >= 0);
+		assert_invariant(new_nest_level >= 0);
 		if (new_nest_level == 0)
 			context.scope_nest_level.erase(scope);
 	}
@@ -65,7 +65,7 @@ RegisterEscapeConstructGuard::RegisterEscapeConstructGuard(
 		ProceduralContext &context, EscapeConstructKind kind, const ast::Statement *statement)
 	: flag(Variable::escape_flag(context.flag_counter++)), context(context)
 {
-	log_assert(kind == EscapeConstructKind::Loop || kind == EscapeConstructKind::LoopBody);
+	assert_invariant(kind == EscapeConstructKind::Loop || kind == EscapeConstructKind::LoopBody);
 	context.escape_stack.emplace_back();
 	auto &construct = context.escape_stack.back();
 	construct.kind = kind;
@@ -88,7 +88,7 @@ void ProceduralContext::signal_escape(slang::SourceLocation loc, EscapeConstruct
 			break;
 		it++;
 	}
-	log_assert(it != escape_stack.rend());
+	assert_invariant(it != escape_stack.rend());
 }
 
 const ast::SubroutineSymbol *ProceduralContext::get_current_subroutine()
@@ -97,7 +97,7 @@ const ast::SubroutineSymbol *ProceduralContext::get_current_subroutine()
 		if (it->kind == EscapeConstructKind::FunctionBody)
 			return it->subroutine;
 	}
-	log_abort();
+	assert_invariant(false && "unreachable");
 }
 
 RegisterEscapeConstructGuard::~RegisterEscapeConstructGuard()
@@ -212,8 +212,8 @@ void crop_undef_mask(const ir::Value &mask, VariableBits &target)
 void ProceduralContext::update_variable_state(slang::SourceLocation loc, VariableBits lvalue,
 		ir::Value unmasked_rvalue, ir::Value mask, bool blocking)
 {
-	log_assert(lvalue.bitwidth() == (uint64_t)unmasked_rvalue.size());
-	log_assert(lvalue.bitwidth() == (uint64_t)mask.size());
+	assert_invariant(lvalue.bitwidth() == (uint64_t)unmasked_rvalue.size());
+	assert_invariant(lvalue.bitwidth() == (uint64_t)mask.size());
 
 	crop_zero_mask(mask, lvalue);
 	crop_zero_mask(mask, unmasked_rvalue);
@@ -253,7 +253,7 @@ void ProceduralContext::update_variable_state(slang::SourceLocation loc, Variabl
 			// This is expected to be an AST invariant -- we don't have a symbol
 			// to use here for the ast_invariant() helper, so it's a plain
 			// assert
-			log_assert(blocking);
+			assert_invariant(blocking);
 		}
 	}
 
@@ -295,7 +295,7 @@ void ProceduralContext::update_variable_state(slang::SourceLocation loc, Variabl
 							rvalue.extract((int)base, (int)size).as_const());
 				}
 			} break;
-			default: log_abort();
+			default: assert_invariant(false && "unreachable");
 			}
 		}
 		return;
@@ -332,7 +332,7 @@ ir::Value ProceduralContext::substitute_rvalue(VariableBits bits)
 		for (auto [base, size, chunk] : bits.chunk_spans()) {
 			switch (chunk.variable.kind) {
 			case Variable::Dummy:
-			case Variable::Invalid: log_abort();
+			case Variable::Invalid: assert_invariant(false && "unreachable");
 
 			case Variable::Local:
 			case Variable::EscapeFlag:
@@ -345,7 +345,7 @@ ir::Value ProceduralContext::substitute_rvalue(VariableBits bits)
 					subed.append(netlist.initial_state.at(chunk[i], ir::Sx));
 				}
 				break;
-			default: log_abort();
+			default: assert_invariant(false && "unreachable");
 			}
 		}
 	} else {
@@ -380,7 +380,7 @@ void assign_to_lvalue_with_masking(const ast::AssignmentExpression &assign,
 			assign_to_lvalue_with_masking(assign, context, el, rvalue.extract(base, el.bitsize),
 					mask.extract(base, el.bitsize), blocking);
 		}
-		log_assert(base == 0);
+		assert_invariant(base == 0);
 	} else if (auto range_sel = std::get_if<LValue::RangeSelect>(&lvalue.descriptor)) {
 		if ((uint64_t)range_sel->resolver->stride == lvalue.bitsize) {
 			// Effectively an element select
@@ -429,7 +429,7 @@ void assign_to_lvalue_with_masking(const ast::AssignmentExpression &assign,
 		context.preceding_memwr.push_back(port);
 	} else {
 		// unreachable
-		log_abort();
+		assert_invariant(false && "unreachable");
 	}
 }
 
@@ -454,24 +454,24 @@ void ProceduralContext::assign_rvalue(const ast::AssignmentExpression &assign, i
 
 		int nbits_remaining = rvalue.size();
 		for (auto el : pattern_lexpr.elements()) {
-			log_assert(el->kind == ast::ExpressionKind::Assignment);
+			assert_invariant(el->kind == ast::ExpressionKind::Assignment);
 			auto &inner_assign = el->as<ast::AssignmentExpression>();
 
 			const ast::Expression *rsymbol = &inner_assign.right();
 			while (rsymbol->kind == ast::ExpressionKind::Conversion)
 				rsymbol = &rsymbol->as<ast::ConversionExpression>().operand();
-			log_assert(rsymbol->kind == ast::ExpressionKind::EmptyArgument);
-			log_assert(rsymbol->type->isBitstreamType());
+			assert_invariant(rsymbol->kind == ast::ExpressionKind::EmptyArgument);
+			assert_invariant(rsymbol->type->isBitstreamType());
 			int relem_width = rsymbol->type->getBitstreamWidth();
 
-			log_assert(nbits_remaining >= relem_width);
+			assert_invariant(nbits_remaining >= relem_width);
 			ir::Value relem = rvalue.extract(nbits_remaining - relem_width, relem_width);
 			nbits_remaining -= relem_width;
 
 			assign_rvalue(inner_assign, eval.apply_nested_conversion(inner_assign.right(), relem));
 		}
 
-		log_assert(nbits_remaining == 0);
+		assert_invariant(nbits_remaining == 0);
 		return;
 	}
 	auto analyzed_lvalue = LValue::analyze(this->eval, *raw_lexpr, false);
@@ -495,7 +495,7 @@ UnrollLimitTracking::UnrollLimitTracking(NetlistContext &netlist, int limit)
 
 UnrollLimitTracking::~UnrollLimitTracking()
 {
-	log_assert(!unrolling);
+	assert_invariant(!unrolling);
 }
 
 void UnrollLimitTracking::enter_unrolling()
@@ -510,7 +510,7 @@ void UnrollLimitTracking::enter_unrolling()
 void UnrollLimitTracking::exit_unrolling()
 {
 	unrolling--;
-	log_assert(unrolling >= 0);
+	assert_invariant(unrolling >= 0);
 }
 
 bool UnrollLimitTracking::unroll_tick(const ast::Statement *symbol)

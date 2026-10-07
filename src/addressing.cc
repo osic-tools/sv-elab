@@ -157,7 +157,7 @@ ir::Value AddressingResolver::shift_up(ir::Value val, bool oor_undef, uint64_t o
 		}
 
 		for (size_t i = 0; i < written.size(); i++) {
-			log_assert(written[i]);
+			assert_invariant(written[i]);
 		}
 
 		return ret;
@@ -178,7 +178,7 @@ template <> VariableBits AddressingResolver::extract<VariableBits>(VariableBits 
 	ret.append(val.extract(start, end - start));
 	ret.append(
 			Variable::dummy(std::clamp<int64_t>(iwidth - (-offset * stride + valsize), 0, iwidth)));
-	log_assert(ret.bitwidth() == width);
+	assert_invariant(ret.bitwidth() == width);
 
 	return ret;
 }
@@ -197,7 +197,7 @@ template <> ir::Value AddressingResolver::extract<ir::Value>(ir::Value val, uint
 	ret.append(val.extract((uint64_t)start, (uint64_t)(end - start)));
 	ret.append(ir::Value(ir::Sx,
 			(uint64_t)std::clamp<int64_t>(iwidth - (-offset * stride + valsize), 0, iwidth)));
-	log_assert((int64_t)ret.size() == iwidth);
+	assert_invariant((int64_t)ret.size() == iwidth);
 
 	return ret;
 }
@@ -214,7 +214,7 @@ static ir::Value sign_extend(const ir::Value &value, uint64_t target_width)
 
 ir::Value AddressingResolver::raw_demux(ir::Value val, int64_t from, int64_t to)
 {
-	log_assert(val.width() == stride);
+	assert_invariant(val.width() == stride);
 	ir::Value negative, positive;
 
 	if (from < 0) {
@@ -233,7 +233,7 @@ ir::Value AddressingResolver::raw_demux(ir::Value val, int64_t from, int64_t to)
 		ir::Value val_gated = netlist.Mux(ir::Value(ir::S0, stride), val, valid);
 
 		negative = netlist.Demux(val_gated, sel).extract_end((stride << sel_size) + from * stride);
-		log_assert(negative.width() == (uint64_t)(-from * stride));
+		assert_invariant(negative.width() == (uint64_t)(-from * stride));
 	}
 
 	if (to > 0) {
@@ -251,7 +251,7 @@ ir::Value AddressingResolver::raw_demux(ir::Value val, int64_t from, int64_t to)
 		ir::Value val_gated = netlist.Mux(ir::Value(ir::S0, stride), val, valid);
 
 		positive = netlist.Demux(val_gated, sel).extract(0, to * stride);
-		log_assert(positive.width() == (uint64_t)(to * stride));
+		assert_invariant(positive.width() == (uint64_t)(to * stride));
 	}
 
 	return {positive, negative};
@@ -259,8 +259,8 @@ ir::Value AddressingResolver::raw_demux(ir::Value val, int64_t from, int64_t to)
 
 ir::Value AddressingResolver::demux(ir::Value val, uint64_t output_len)
 {
-	log_assert(val.size() == stride);
-	log_assert(output_len % stride == 0);
+	assert_invariant(val.size() == stride);
+	assert_invariant(output_len % stride == 0);
 	ir::Value demuxed = raw_demux(val, -std::max<int64_t>(0, base_offset),
 			std::max<int64_t>(0, ((int64_t)output_len / stride) - base_offset));
 
@@ -269,7 +269,7 @@ ir::Value AddressingResolver::demux(ir::Value val, uint64_t output_len)
 
 ir::Value AddressingResolver::raw_mux(ir::Value val, int64_t from, int64_t to, uint64_t stride)
 {
-	log_assert(stride * (to - from) == val.size());
+	assert_invariant(stride * (to - from) == val.size());
 	ir::Value negative(ir::Sx, stride), positive(ir::Sx, stride);
 
 	if (from < 0) {
@@ -306,8 +306,8 @@ ir::Value AddressingResolver::raw_mux(ir::Value val, int64_t from, int64_t to, u
 
 ir::Value AddressingResolver::mux(ir::Value val, uint64_t output_len)
 {
-	log_assert(output_len == stride);
-	log_assert(val.width() % stride == 0);
+	assert_invariant(output_len == stride);
+	assert_invariant(val.width() % stride == 0);
 	if (raw_signal.is_fully_def())
 		return extract(val, output_len);
 	return raw_mux(
@@ -359,7 +359,7 @@ ir::Value AddressingResolver::shift_down(ir::Value val, uint64_t output_len)
 		}
 
 		for (size_t i = 0; i < ret.width(); i++)
-			log_assert(written[i]);
+			assert_invariant(written[i]);
 
 		return ret;
 	}
@@ -379,7 +379,7 @@ ir::Value AddressingResolver::embed(
 	ret.append(ir::Value(ir::Trit(padding),
 			std::clamp<int64_t>(
 					(int64_t)output_len - offset * stride - (int64_t)val.size(), 0, output_len)));
-	log_assert(ret.size() == (uint64_t)output_len);
+	assert_invariant(ret.size() == (uint64_t)output_len);
 
 	return ret;
 }
