@@ -796,14 +796,14 @@ extern void export_blackbox_to_rtlil(NetlistContext &netlist, const ast::Instanc
 [[noreturn]] void unimplemented_(const ast::Expression &obj, const char *file, int line, const char *condition);
 [[noreturn]] void unimplemented_(const ast::Statement &obj, const char *file, int line, const char *condition);
 [[noreturn]] void unimplemented_(const ast::TimingControl &obj, const char *file, int line, const char *condition);
-#define require(obj, property) { if (!(property)) unimplemented_(obj, __FILE__, __LINE__, #property); }
-#define unimplemented(obj) { slang_frontend::unimplemented_(obj, __FILE__, __LINE__, NULL); }
+#define require(obj, property) do { if (!(property)) unimplemented_(obj, __FILE__, __LINE__, #property); } while(0)
+#define unimplemented(obj) do { slang_frontend::unimplemented_(obj, __FILE__, __LINE__, NULL); } while (0)
 #define ast_invariant(obj, property) require(obj, property)
 #define ast_unreachable(obj) unimplemented(obj)
-#define assert_invariant(property) { if (!(property)) error_(__FILE__, __LINE__, #property); }
+#define assert_invariant(property) do { if (!(property)) error_(__FILE__, __LINE__, #property); } while (0)
 
 [[noreturn]] void wire_missing_(NetlistContext &netlist, const ast::Symbol &symbol, const char *file, int line);
-#define wire_missing(netlist, symbol) { wire_missing_(netlist, symbol, __FILE__, __LINE__); }
+#define wire_missing(netlist, symbol) do { wire_missing_(netlist, symbol, __FILE__, __LINE__); } while (0)
 
 // naming.cc
 typedef std::pair<VariableChunk, std::string> NamedChunk;
