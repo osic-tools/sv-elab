@@ -334,10 +334,10 @@ namespace slang_frontend {
 				break;
 
 			if (debug) {
-				log_debug("%s case ", std::string(level, ' ').c_str());
+				std::string message = std::string(level, ' ') + "%s case ";
 				for (auto &compare : case_->compare)
-					log_debug("%s ", log_signal(lower_pattern(compare)));
-				log_debug("\n");
+					message += log_signal(lower_pattern(compare)) + " ";
+				log_debug("%s\n", message.c_str());
 			}
 
 			bool selectable = false;
