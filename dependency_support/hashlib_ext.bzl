@@ -1,14 +1,24 @@
-load("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
+def _vendored_hashlib_repository_impl(ctx):
+    for src in ctx.attr.srcs:
+        ctx.symlink(src, ctx.path(src).basename)
+    ctx.symlink(ctx.attr.build_file, "BUILD.bazel")
 
-def _vendored_hashlib_extension_impl(ctx):
-    # Resolve third_party/hashlib relative to this module's root rather than
-    # the consumer's, so the extension also works when sv-elab is consumed as
-    # a bazel_dep with local_path_override.
-    module_root = ctx.path(Label("//:MODULE.bazel")).dirname
-    new_local_repository(
+_vendored_hashlib_repository = repository_rule(
+    implementation = _vendored_hashlib_repository_impl,
+    attrs = {
+        "srcs": attr.label_list(mandatory = True, allow_files = True),
+        "build_file": attr.label(mandatory = True, allow_single_file = True),
+    },
+)
+
+def _vendored_hashlib_extension_impl(_ctx):
+    _vendored_hashlib_repository(
         name = "vendored-hashlib",
-        path = str(module_root.get_child("third_party/hashlib")),
-        build_file = "//:dependency_support/hashlib.BUILD.bazel",
+        srcs = [
+            Label("//:third_party/hashlib/hashlib.cc"),
+            Label("//:third_party/hashlib/hashlib.h"),
+        ],
+        build_file = Label("//:dependency_support/hashlib.BUILD.bazel"),
     )
 
 vendored_hashlib = module_extension(
