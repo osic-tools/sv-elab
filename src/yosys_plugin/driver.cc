@@ -341,10 +341,8 @@ struct SlangFrontend : Frontend
 
 	bool replace_existing_pass() const override { return true; }
 
-	std::string wrap_text(std::string desc, size_t width = 70)
+	void display_wrapped_text(std::string desc, size_t width = 70)
 	{
-		constexpr const char *indent = "        ";
-
 		std::replace(desc.begin(), desc.end(), '\n', ' ');
 		std::replace(desc.begin(), desc.end(), '\r', ' ');
 
@@ -368,12 +366,13 @@ struct SlangFrontend : Frontend
 				end = pos + width;
 
 			result += desc.substr(pos, end - pos);
-			result += '\n';
-			result += indent;
+			log("        %s\n", result);
+			result = "";
 
 			pos = end;
 		}
-		return result;
+		if (!result.empty())
+			log("        %s\n", result);
 	}
 
 	void help() override
@@ -391,7 +390,7 @@ struct SlangFrontend : Frontend
 		log("\n");
 		for (auto &opt : driver.cmdLine.getHelpOptions()) {
 			log("    %s\n", opt.first.c_str());
-			log("        %s\n", wrap_text(opt.second).c_str());
+			display_wrapped_text(opt.second);
 			log("\n");
 		}
 		log("\n");
