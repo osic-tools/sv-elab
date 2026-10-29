@@ -5,6 +5,7 @@
 // Distributed under the terms of the ISC license, see LICENSE
 //
 // clang-format off
+#include <inttypes.h>
 #include <string.h>
 #include <cstdlib>
 #include <cstdio>

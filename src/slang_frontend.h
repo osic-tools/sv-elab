@@ -16,6 +16,7 @@
 #include <set>
 #include <stdexcept>
 #include "ir.h"
+#include "kernel/yosys_common.h"
 #include "slang/ast/EvalContext.h"
 #include "slang/ast/Scope.h"
 #include "slang/ast/SemanticFacts.h"
@@ -23,6 +24,7 @@
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/diagnostics/Diagnostics.h"
 #include "slang/numeric/ConstantValue.h"
+#include "slang/numeric/SVInt.h"
 #include "slang/text/SourceLocation.h"
 #include "slang/util/Enum.h"
 #ifndef SLANG_NO_YOSYS

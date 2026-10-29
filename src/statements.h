@@ -7,6 +7,7 @@
 #pragma once
 
 #include "diag.h"
+#include "slang/numeric/SVInt.h"
 #include <cstddef>
 #include <cstdint>
 #include <functional>
